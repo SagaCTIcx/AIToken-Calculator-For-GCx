@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Genesys Cloud AI Token Calculator (No Scroll)</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+	    <!-- Chart.js CDN for the Pie Chart -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+    <style>
+        :root {
+            --primary: #FF4F1F; /* Genesys Orange */
+            --primary-light: #FF7B51;
+            --secondary: #232F3E; /* Dark Blue for text/borders */
+            --bg-light: #F8F9FB;
+            --card-bg: #FFFFFF;
+            --text-main: #1B212A;
+            --text-muted: #6B7280;
+            --border-color: #E6E9EF;
+            --input-focus-shadow: 0 0 0 3px rgba(255, 79, 31, 0.2);
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-light);
+            color: var(--text-main);
+            margin: 0;
+            padding: 0; /* Remove body padding to conserve space */
+            -webkit-font-smoothing: antialiased;
+            overflow-y: hidden; /* Prevent body scroll if content fits */
+            height: 100vh;
+        }
+
+        /* HEADER */
+        .navbar {
+            background: var(--card-bg);
+            border-bottom: 2px solid var(--primary);
+            padding: 15px 30px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+			min-height: 60px; /* Ensure header height is fixed */
+
+        }
+
+        .navbar-brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .logo {
+            height: 25px;
+        }
+
+        .navbar-title {
+            font-weight: 700;
+            font-size: 1.1rem;
+            color: var(--secondary);
+            border-left: 1px solid var(--border-color);
+            padding-left: 10px;
+        }
+
+        /* MAIN LAYOUT */
+        .main-layout {
+            max-width: 1470px;
+            margin: 0 auto;
+            padding: 20px 30px;
+            display: grid;
+            grid-template-columns: 1fr; 
+            gap: 20px;
+            height: calc(100vh - 60px); /* Fill remaining viewport height */
+        }
+        
+        @media (min-width: 1024px) {
+            .main-layout {
+                grid-template-columns: 2fr 1fr; /* 2/3rds inputs, 1/3rd summary */
+            }
+        }
+        
+        /* INPUTS CONTAINER */
+        .inputs-container {
+            background: var(--card-bg);
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            padding: 20px;
+            overflow-y: auto; /* Allow scrolling only within the input area if needed */
+        }
+
+        .input-section-title {
+            font-size: 1rem;
+            font-weight: 700;
+            color: var(--secondary);
+            padding-bottom: 8px;
+            margin-bottom: 15px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        /* High Density Grid for all Inputs */
+        .input-grid-compact {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 15px;
+        }
+
+        /* Individual Input Styling */
+        .input-item {
+            display: flex;
+            flex-direction: column;
+            border: 1px solid #f0f0f0;
+            border-radius: 4px;
+            padding: 8px;
+            background: #FAFBFC;
+        }
+        
+        .input-meta {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 4px;
+        }
+
+        label {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-main);
+            margin: 0;
+        }
+
+        .sub-label {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            font-weight: 400;
+        }
+
+        .input-wrapper {
+            display: flex;
+            align-items: center;
+        }
+
+        input[type="number"] {
+            flex-grow: 1;
+            padding: 6px 8px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px 0 0 4px;
+            font-size: 0.9rem;
+            font-family: 'Inter', sans-serif;
+            background: var(--card-bg);
+            color: var(--text-main);
+        }
+
+        input[type="number"]:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: var(--input-focus-shadow);
+            z-index: 10;
+        }
+
+        .token-display {
+            background: var(--primary);
+            color: white;
+            padding: 6px 8px;
+            border-radius: 0 4px 4px 0;
+            font-weight: 700;
+            text-align: right;
+            min-width: 60px;
+            font-size: 0.85rem;
+            font-variant-numeric: tabular-nums;
+        }
+        
+        /* SUMMARY PANEL */
+        .summary-card {
+            background: var(--card-bg); 
+            border-radius: 8px;
+            padding: 20px;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 4px 10px -1px rgba(0, 0, 0, 0.05);
+            height: 100%; /* Take full height of its grid cell */
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .summary-header {
+            font-size: 1.25rem;
+            font-weight: 800;
+            margin-bottom: 15px;
+            color: var(--secondary);
+            border-bottom: 3px solid var(--primary);
+            padding-bottom: 8px;
+        }
+
+        .summary-metric {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid #F0F0F0;
+        }
+        
+        .metric-label {
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: var(--text-muted);
+        }
+
+        .metric-value {
+            font-size: 1rem;
+            font-weight: 700;
+            color: var(--text-main);
+            font-variant-numeric: tabular-nums;
+        }
+
+        .org-type-select {
+            background: var(--primary);
+            color: white;
+            border: none;
+            font-weight: 600;
+            padding: 8px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-bottom: 15px;
+            display: block;
+            width: 100%;
+        }
+        
+        .final-cost {
+            margin-top: auto; /* Push to the bottom */
+            padding: 15px;
+            background: var(--primary); 
+            border-radius: 6px;
+            text-align: center;
+            color: white;
+            box-shadow: 0 4px 8px rgba(255, 79, 31, 0.4);
+        }
+
+        .final-cost .label {
+            font-size: 1rem;
+            font-weight: 700;
+            display: block;
+        }
+
+        .final-cost .value {
+            font-size: 2rem;
+            font-weight: 800;
+            line-height: 1.2;
+        }
+        
+        .highlight-value {
+            color: var(--primary);
+            font-size: 1.1rem;
+        }
+        
+		        .chart-container {
+            flex-grow: 1; /* Allow chart area to expand */
+            min-height: 250px;
+            max-height: 40vh;
+            margin-top: 15px;
+            margin-bottom: 15px;
+            padding: 10px;
+            border: 1px dashed var(--border-color);
+            border-radius: 4px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+		
+        /* Mobile adjustments: Enable scrolling for smaller screens */
+        @media (max-width: 1023px) {
+            body { overflow-y: auto; height: auto; }
+            .main-layout { height: auto; padding: 15px; }
+            .inputs-container { overflow-y: visible; }
+            .summary-card { height: auto; }
+            .final-cost { margin-top: 20px; }
+        }
+    </style>
+</head>
+<body onload="calculate()">
+
+<nav class="navbar">
+    <div class="navbar-brand">
+        <img src="https://www.genesys.com/wp-content/themes/genesys-kraken/logo/genesys-com-full-color.svg" alt="Genesys Logo" class="logo">
+        <span class="navbar-title">AI Token Pricing Simulator</span>
+    </div>
+    <div style="font-size: 0.8rem; color: var(--text-muted);">
+        Live Monthly Estimation ($1.00/Billable Token)
+    </div>
+</nav>
+
+<div class="main-layout">
+
+    <div class="inputs-container">
+        
+        <div class="input-section-title">Core AI & Messaging</div>
+        <div class="input-grid-compact">
+            <div class="input-item">
+                <div class="input-meta"><label>WhatsApp Messages</label><span class="sub-label">400/token</span></div>
+                <div class="input-wrapper">
+                    <input type="number" id="whatsapp_msgs" value="0" min="0" oninput="calculate()">
+                    <span class="token-display" id="whatsapp_tokens">0</span>
+                </div>
+            </div>
+            <div class="input-item">
+                <div class="input-meta"><label>AI Guides</label><span class="sub-label">1/token</span></div>
+                <div class="input-wrapper">
+                    <input type="number" id="agentic_interactions" value="0" oninput="calculate()">
+                    <span class="token-display" id="agentic_tokens">0</span>
+                </div>
+            </div>
+            <div class="input-item">
+                <div class="input-meta"><label>AI Summaries</label><span class="sub-label">50/token</span></div>
+                <div class="input-wrapper">
+                    <input type="number" id="ai_summary_count" value="0" oninput="calculate()">
+                    <span class="token-display" id="ai_summary_tokens">0</span>
+                </div>
+            </div>
+             <div class="input-item">
+                <div class="input-meta"><label>AI Translate</label><span class="sub-label">2/token</span></div>
+                <div class="input-wrapper">
+                    <input type="number" id="ai_translate_count" value="0" oninput="calculate()">
+                    <span class="token-display" id="ai_translate_tokens">0</span>
+                </div>
+            </div>
+        </div>
+        
+        <div style="height: 10px;"></div>
+
+        <div class="input-section-title">Bots & Virtual Agent</div>
+        <div class="input-grid-compact">
+            <div class="input-item">
+                <div class="input-meta"><label>Voice Bot Minutes</label><span class="sub-label">17 mins/token</span></div>
+                <div class="input-wrapper">
+                    <input type="number" id="bot_voice_min" value="0" min="0" oninput="calculate()">
+                    <span class="token-display" id="bot_voice_tokens">0</span>
+                </div>
+            </div>
+            
+            <div class="input-item">
+                <div class="input-meta"><label>Digital Bot Sessions</label><span class="sub-label">51 sessions/token</span></div>
+                <div class="input-wrapper">
+                    <input type="number" id="bot_digital_sess" value="0" min="0" oninput="calculate()">
+                    <span class="token-display" id="bot_digital_tokens">0</span>
+                </div>
+            </div>
+            
+            <div class="input-item">
+                <div class="input-meta"><label>Virtual Agent Voice Sessions</label><span class="sub-label">2 sessions = 1 token</span></div>
+                <div class="input-wrapper">
+                    <input type="number" id="va_voice_sess" placeholder="0" oninput="calculate()">
+                    <span class="token-display" id="va_voice_tokens">0</span>
+                </div>
+            </div>
+            
+            <div class="input-item">
+                <div class="input-meta"><label>Virtual Agent Digital Sessions</label><span class="sub-label">2 sessions = 1 token</span></div>
+                <div class="input-wrapper">
+                    <input type="number" id="va_digital_sess" placeholder="0" oninput="calculate()">
+                    <span class="token-display" id="va_digital_tokens">0</span>
+                </div>
+            </div>
+        </div>
+
+        <div style="height: 10px;"></div>
+        
+        <div class="input-section-title">Copilot, Analytics & Others</div>
+        <div class="input-grid-compact">
+            <div class="input-item">
+                <div class="input-meta"><label>Agent Copilot<br>(Named Users)</label><span class="sub-label">40 tokens/user</span></div>
+                <div class="input-wrapper">
+                    <input type="number" id="copilot_named" value="0" min="0" oninput="calculate()">
+                    <span class="token-display" id="copilot_named_tokens">0</span>
+                </div>
+            </div>
+            
+            <div class="input-item">
+                <div class="input-meta"><label>Agent Copilot<br>(Concurrent Users)</label><span class="sub-label">60 tokens/user</span></div>
+                <div class="input-wrapper">
+                    <input type="number" id="copilot_concurrent" value="0" min="0" oninput="calculate()">
+                    <span class="token-display" id="copilot_concurrent_tokens">0</span>
+                </div>
+            </div>
+
+            <div class="input-item">
+                <div class="input-meta"><label>Analytics Named Users</label><span class="sub-label">30 tokens/user</span></div>
+                <div class="input-wrapper">
+                    <input type="number" id="sta_named" value="0" oninput="calculate()">
+                    <span class="token-display" id="sta_named_tokens">0</span>
+                </div>
+            </div>
+            
+            <div class="input-item">
+                <div class="input-meta"><label>Analytics Concurrent Users</label><span class="sub-label">45 tokens/user</span></div>
+                <div class="input-wrapper">
+                    <input type="number" id="sta_concurrent" value="0" oninput="calculate()">
+                    <span class="token-display" id="sta_concurrent_tokens">0</span>
+                </div>
+            </div>
+            
+            <div class="input-item">
+                <div class="input-meta"><label>AI Scoring</label><span class="sub-label">20 evaluations/token</span></div>
+                <div class="input-wrapper">
+                    <input type="number" id="ai_scoring_evals" value="0" oninput="calculate()">
+                    <span class="token-display" id="ai_scoring_tokens">0</span>
+                </div>
+            </div>
+            
+            <div class="input-item">
+                <div class="input-meta"><label>Predictive Engagement Events</label><span class="sub-label">4000 events/token</span></div>
+                <div class="input-wrapper">
+                    <input type="number" id="pe_events" value="0" oninput="calculate()">
+                    <span class="token-display" id="pe_tokens">0</span>
+                </div>
+            </div>
+
+            <div class="input-item" style="grid-column: span 3; display: block;">
+                <div class="input-meta" style="margin-bottom: 10px;">
+                    <label>Social Messages</label>
+                    <span class="sub-label">400 messages/token</span>
+                </div>
+                <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 2px;">
+                    <input type="number" id="fb_msgs" placeholder="Facebook" oninput="calculate()" style="border-radius: 2px;">
+                    <input type="number" id="insta_msgs" placeholder="Instagram" oninput="calculate()" style="border-radius: 2px;">
+                    <input type="number" id="x_msgs" placeholder="X (Twitter)" oninput="calculate()" style="border-radius: 2px;">
+                    <input type="number" id="apple_msgs" placeholder="Apple" oninput="calculate()" style="border-radius: 2px;">
+                </div>
+                 <div style="text-align: right; margin-top: 2px;">
+                    <span class="sub-label">Total Social Tokens:</span>
+                    <span id="social_tokens_total" style="font-weight: 600; color: var(--secondary); font-size: 0.85rem;">0</span>
+                </div>
+            </div>
+        </div>
+
+    </div> <div class="summary-card">
+        <div class="summary-header">Cost & Token Summary</div>
+        
+        <label class="metric-label" style="margin-bottom: 5px;">Select Contract Type (affects free allocation)</label>
+        <select id="org_type" class="org-type-select" onchange="calculate()">
+            <option value="Concurrent">Concurrent (350 Free Tokens)</option>
+            <option value="Named">Named (250 Free Tokens)</option>
+        </select>
+        
+        <div class="summary-metric" style="border-top: 1px solid var(--border-color); padding-top: 15px;">
+            <span class="metric-label">FREE ALLOCATION</span>
+            <span class="metric-value highlight-value" id="free_allocation">350</span>
+        </div>
+
+        <h4 style="margin-top: 15px; margin-bottom: 5px; font-weight: 700; font-size: 1rem; color: var(--secondary);">Token Breakdown:</h4>
+        
+        <div class="summary-metric">
+            <span class="metric-label">Bots & Virtual Agent (Subtotal)</span>
+            <span class="metric-value" id="total_messaging_bots">0</span>
+        </div>
+        
+        <div class="summary-metric">
+            <span class="metric-label">AI Services & Predictive Eng.</span>
+            <span class="metric-value" id="total_ai_services">0</span>
+        </div>
+        
+        <div class="summary-metric">
+            <span class="metric-label">Copilot, Analytics & Social</span>
+            <span class="metric-value" id="total_analytics_social">0</span>
+        </div>
+        
+        <div class="summary-metric" style="border-bottom: none; border-top: 2px solid var(--primary); padding-top: 15px;">
+            <span class="metric-label" style="font-size: 1rem; color: var(--text-main);">GRAND TOTAL TOKENS USED</span>
+            <span class="metric-value" style="font-size: 1.25rem; color: var(--secondary);" id="total_tokens">0</span>
+        </div>
+        
+        <div class="summary-metric" style="border-bottom: none; padding-top: 10px;">
+            <span class="metric-label" style="color: var(--primary); font-size: 0.9rem;">TOTAL BILLABLE TOKENS</span>
+            <span class="metric-value highlight-value" style="font-size: 1.5rem; font-weight: 800;" id="billable_tokens">0</span>
+        </div>
+
+		
+        <div class="final-cost">
+            <span class="label">ESTIMATED MONTHLY COST</span>
+            <span class="value" id="final_total_cost">$0.00</span>
+        </div>
+	        <h4 style="margin-top: 15px; margin-bottom: 5px; font-weight: 700; font-size: 1rem; color: var(--secondary);">Token Breakdown:</h4>
+        
+        <!-- Pie Chart will be rendered here -->
+        <div class="chart-container">
+            <canvas id="tokenPieChart"></canvas>
+            <div id="chart-placeholder" style="color: var(--text-muted); font-style: italic;">
+                Enter usage values to see the token distribution breakdown.
+            </div>
+        </div>	
+		
+    </div> </div>
+
+
+
+	<script>
+	
+	let tokenPieChart = null;
+    const CHART_COLORS = [
+        '#FF4F1F', '#1B212A', '#009F8C', '#F7B731', '#925FEA',
+        '#FF6F61', '#4D4C7D', '#50B498', '#FFD700', '#B0C4DE',
+        '#8B0000', '#6A5ACD', '#4682B4', '#DAA520', '#C0C0C0',
+        '#FFB6C1', '#A0522D'
+    ];
+	
+    // --- Helper Functions ---
+    function getVal(id) {
+        return parseFloat(document.getElementById(id).value) || 0;
+    }
+
+    function setTxt(id, val, isCurrency = false) {
+        const el = document.getElementById(id);
+        if (!el) return;
+        
+        let displayVal;
+        if (isCurrency) {
+            displayVal = '$' + val.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        } else {
+            // Round up to nearest whole number for tokens
+            displayVal = Math.ceil(val).toLocaleString(); 
+        }
+        
+        el.innerText = displayVal;
+    }
+
+	// Pie Chat Calculation
+	function updatePieChart(tokenData) {
+        const ctx = document.getElementById('tokenPieChart').getContext('2d');
+        const placeholder = document.getElementById('chart-placeholder');
+        
+        const validData = tokenData.filter(d => d.value > 0);
+
+        if (validData.length === 0) {
+            if (tokenPieChart) {
+                tokenPieChart.destroy();
+                tokenPieChart = null;
+            }
+            placeholder.style.display = 'block';
+            return;
+        }
+
+        placeholder.style.display = 'none';
+
+        const labels = validData.map(d => d.label);
+        const data = validData.map(d => Math.ceil(d.value));
+
+        if (tokenPieChart) {
+            // Update existing chart
+            tokenPieChart.data.labels = labels;
+            tokenPieChart.data.datasets[0].data = data;
+            tokenPieChart.data.datasets[0].backgroundColor = CHART_COLORS.slice(0, validData.length);
+            tokenPieChart.update();
+        } else {
+            // Create new chart
+            tokenPieChart = new Chart(ctx, {
+                type: 'doughnut', // Changed to doughnut for better look
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Tokens Used',
+                        data: data,
+                        backgroundColor: CHART_COLORS.slice(0, validData.length),
+                        borderColor: '#ffffff',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'right',
+                            labels: {
+                                font: {
+                                    family: 'Inter',
+                                    size: 10
+                                }
+                            }
+                        },
+                        title: {
+                            display: true,
+                            text: 'Token Usage Distribution',
+                            font: {
+                                family: 'Inter',
+                                size: 14,
+                                weight: 'bold'
+                            },
+                            color: '#1B212A'
+                        }
+                    }
+                }
+            });
+        }
+    }
+
+    // --- Main Calculation Logic ---
+    function calculate() {
+        // Data structure to hold all individual token usages for the chart
+        let tokenUsages = [];
+
+        // --- SECTION 1: BOTS & VIRTUAL AGENT ---
+        const bot_v_tokens = getVal('bot_voice_min') / 17;
+        setTxt('bot_voice_tokens', bot_v_tokens);
+        tokenUsages.push({ label: 'Voice Bot Minutes', value: bot_v_tokens });
+
+
+        const bot_d_tokens = getVal('bot_digital_sess') / 51;
+        setTxt('bot_digital_tokens', bot_d_tokens);
+        tokenUsages.push({ label: 'Digital Bot Sessions', value: bot_d_tokens });
+
+        
+        const va_v_sess = getVal('va_voice_sess');
+        const va_d_sess = getVal('va_digital_sess');
+        const va_v_tokens = va_v_sess / 2;
+        const va_d_tokens = va_d_sess / 2;
+        const va_tokens = va_v_tokens + va_d_tokens;
+
+        setTxt('va_voice_tokens', va_v_tokens); 
+        setTxt('va_digital_tokens', va_d_tokens); 
+           
+		tokenUsages.push({ label: 'Virtual Agent Voice', value: va_v_tokens });
+        tokenUsages.push({ label: 'Virtual Agent Digital', value: va_d_tokens });
+		
+		
+        const agentic_tokens = getVal('agentic_interactions'); 
+        setTxt('agentic_tokens', agentic_tokens);
+        tokenUsages.push({ label: 'Agentic VA Interactions', value: agentic_tokens });
+        
+        const total_messaging_bots = bot_v_tokens + bot_d_tokens + va_tokens + agentic_tokens;
+        setTxt('total_messaging_bots', total_messaging_bots);
+
+        // --- SECTION 2: OTHER AI, MESSAGING & PE ---
+        const wa_tokens = getVal('whatsapp_msgs') / 400;
+        setTxt('whatsapp_tokens', wa_tokens);
+        tokenUsages.push({ label: 'WhatsApp Messages', value: wa_tokens });
+
+
+        const ai_sum_tokens = getVal('ai_summary_count') / 50;
+        setTxt('ai_summary_tokens', ai_sum_tokens);
+		tokenUsages.push({ label: 'AI Summaries', value: ai_sum_tokens });
+
+
+        const scoring_tokens = getVal('ai_scoring_evals') / 20;
+        setTxt('ai_scoring_tokens', scoring_tokens);
+        tokenUsages.push({ label: 'AI Scoring', value: scoring_tokens });
+		
+
+        const translate_tokens = getVal('ai_translate_count') / 2;
+        setTxt('ai_translate_tokens', translate_tokens);
+		tokenUsages.push({ label: 'AI Translate', value: translate_tokens });
+
+
+        const pe_tokens = getVal('pe_events') / 4000;
+        setTxt('pe_tokens', pe_tokens);
+		tokenUsages.push({ label: 'Predictive Engagement', value: pe_tokens });
+
+        
+        const total_ai_services = wa_tokens + ai_sum_tokens + scoring_tokens + translate_tokens + pe_tokens;
+        setTxt('total_ai_services', total_ai_services);
+
+        // --- SECTION 3: COPILOT, ANALYTICS & SOCIAL ---
+        const cop_named_tokens = getVal('copilot_named') * 40;
+        const cop_conc_tokens = getVal('copilot_concurrent') * 60;
+        setTxt('copilot_named_tokens', cop_named_tokens);
+        setTxt('copilot_concurrent_tokens', cop_conc_tokens);
+        tokenUsages.push({ label: 'Agent Copilot (Named)', value: cop_named_tokens });
+        tokenUsages.push({ label: 'Agent Copilot (Concurrent)', value: cop_conc_tokens });
+        
+		
+		
+        const sta_n_tokens = getVal('sta_named') * 30;
+        const sta_c_tokens = getVal('sta_concurrent') * 45;
+        setTxt('sta_named_tokens', sta_n_tokens);
+        setTxt('sta_concurrent_tokens', sta_c_tokens);
+		tokenUsages.push({ label: 'Analytics Named', value: sta_n_tokens });
+        tokenUsages.push({ label: 'Analytics Concurrent', value: sta_c_tokens });
+
+        function calcSocial(id) { return getVal(id) / 400; }
+        const social_tokens = calcSocial('fb_msgs') + calcSocial('insta_msgs') + calcSocial('x_msgs') + calcSocial('apple_msgs');
+        setTxt('social_tokens_total', social_tokens);
+        tokenUsages.push({ label: 'Social Messages', value: social_tokens });
+
+
+        const total_analytics_social = cop_named_tokens + cop_conc_tokens + sta_n_tokens + sta_c_tokens + social_tokens;
+        setTxt('total_analytics_social', total_analytics_social);
+
+        // --- GRAND TOTALS ---
+        const total_tokens = total_messaging_bots + total_ai_services + total_analytics_social;
+        setTxt('total_tokens', total_tokens);
+        
+		// --- CHART UPDATE ---
+        updatePieChart(tokenUsages);
+		
+        // --- COST CALCULATION ---
+        const orgType = document.getElementById('org_type').value;
+        const freeAlloc = (orgType === 'Concurrent') ? 350 : 250;
+        
+        const billable = Math.max(0, total_tokens - freeAlloc);
+        const gene_cost = billable * 1.0; // $1 per token
+
+        // --- UI UPDATES ---
+        setTxt('free_allocation', freeAlloc);
+        setTxt('billable_tokens', billable);
+        setTxt('final_total_cost', gene_cost, true);
+		
+	
+    }
+</script>
+
+</body>
+</html>

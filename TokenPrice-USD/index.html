@@ -31,8 +31,8 @@
             margin: 0;
             padding: 0; /* Remove body padding to conserve space */
             -webkit-font-smoothing: antialiased;
-            overflow-y: hidden; /* Prevent body scroll if content fits */
-            height: 100vh;
+            overflow-y: auto; /* Allow normal page scrolling */
+            min-height: 100vh;
         }
 
         /* HEADER */
@@ -74,7 +74,8 @@
             display: grid;
             grid-template-columns: 1fr; 
             gap: 20px;
-            height: calc(100vh - 60px); /* Fill remaining viewport height */
+            min-height: calc(100vh - 60px); /* Allow layout to grow beyond viewport if needed */
+            height: auto;
         }
         
         @media (min-width: 1024px) {
@@ -89,7 +90,7 @@
             border-radius: 8px;
             border: 1px solid var(--border-color);
             padding: 20px;
-            overflow-y: auto; /* Allow scrolling only within the input area if needed */
+            overflow-y: visible; /* Let the page handle scrolling for better usability */
         }
 
         .input-section-title {
@@ -182,7 +183,9 @@
             padding: 20px;
             border: 1px solid var(--border-color);
             box-shadow: 0 4px 10px -1px rgba(0, 0, 0, 0.05);
-            height: 100%; /* Take full height of its grid cell */
+            position: sticky;
+            top: 20px;
+            height: auto; /* Let summary grow naturally so browser scroll remains available */
             display: flex;
             flex-direction: column;
         }
